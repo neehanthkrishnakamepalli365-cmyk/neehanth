@@ -1,0 +1,10 @@
+SUBMISSION PRIVACY REDACTION NOTICE
+
+This is a derivative of the original ByteProbe ZIP. Private originals must be retained separately.
+
+Replaced identifying Windows machine/account names and local absolute paths in available UTF-8 text and DOCX XML.
+Removed installed virtual environment, Python bytecode caches, nested evidence ZIP, screenshots, and generated PDF evidence copies; these may carry embedded identities or machine metadata and are not needed to execute source tests.
+Recomputed SHA256SUMS.txt and verification_results/MANIFEST_SHA256.txt for retained files. Removed entries referring to omitted files.
+The recorded PASS/FAIL outcomes were not deliberately altered. Historical Windows logs now have redacted machine/user identity; only public copies should be distributed.
+
+LIMITATION: The third-party evaluation/data/MFT binary is preserved unmodified to ensure reproducibility. That public dataset may embed historical user metadata and should not be regarded as anonymized. Binary contents and screenshots cannot be guaranteed free of personal details by text scanning.

@@ -1,0 +1,63 @@
+name: ByteProbe Windows verification (bounded scope)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-automated:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exactly this revision
+        uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pywin32 reportlab
+          python -m pip install -r requirements.txt
+      - name: Capture source and host identity
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path verification_windows | Out-Null
+          git rev-parse HEAD | Out-File -Encoding utf8 verification_windows/git_commit.txt
+          python -VV | Out-File -Encoding utf8 verification_windows/python_version.txt
+          Get-ComputerInfo | Select-Object WindowsProductName,WindowsVersion,OsBuildNumber | Format-List | Out-File -Encoding utf8 verification_windows/os_version.txt
+      - name: Full unit suite (including GUI, native display)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -t . -v *> verification_windows/unit_suite.txt
+          $code = $LASTEXITCODE
+          Get-Content verification_windows/unit_suite.txt | Select-Object -Last 35
+          $fullLog = Get-Content verification_windows/unit_suite.txt -Raw
+          if ($code -ne 0) { throw "Unit suite failed (exit $code)" }
+          if ($fullLog -notmatch 'Ran 139 tests' -or $fullLog -match 'skipped=') {
+            throw "Expected 139 executed tests and zero skips. Inspect verification_windows/unit_suite.txt"
+          }
+      - name: Disposable Windows tests W1-W4 and W7
+        shell: pwsh
+        run: |
+          python tools/run_windows_checks.py --output verification_windows/host_checks *> verification_windows/check_runner.txt
+          $code = $LASTEXITCODE
+          Get-Content verification_windows/check_runner.txt | Select-Object -Last 45
+          if ($code -ne 0) { throw "Windows checks failed (exit $code)" }
+      - name: Upload actual verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: byteprobe-windows-evidence-${{ github.run_id }}
+          path: verification_windows/
+          retention-days: 30
+      # No claim is made here for W5 live raw-volume access or W6 genuine
+      # Windows NTFS SI/FN validation. Both require approved test-volume
+      # evidence outside the disposable-file runner. See docs/WINDOWS_VALIDATION.md.
